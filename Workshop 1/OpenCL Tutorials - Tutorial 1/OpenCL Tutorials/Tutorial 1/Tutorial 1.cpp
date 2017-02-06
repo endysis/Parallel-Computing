@@ -36,11 +36,12 @@ int main(int argc, char **argv) {
 		//2.1 Select computing devices
 		cl::Context context = GetContext(platform_id, device_id);
 
+	
 		//display the selected device
 		cout << "Runinng on " << GetPlatformName(platform_id) << ", " << GetDeviceName(platform_id, device_id) << endl;
 
 		//create a queue to which we will push commands for the device
-		cl::CommandQueue queue(context);
+		cl::CommandQueue queue(context, CL_QUEUE_PROFILING_ENABLE);
 
 		//2.2 Load & build the device code
 		cl::Program::Sources sources;
@@ -49,18 +50,29 @@ int main(int argc, char **argv) {
 
 		cl::Program program(context, sources);
 
-		program.build();
+		try {
+			program.build();
+		}
+		//display kernel building errors
+		catch (const cl::Error& err) {
+			std::cout << "Build Status: " << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
+			std::cout << "Build Options:\t" << program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
+			std::cout << "Build Log:\t " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
+			throw err;
+		}
 
 		//Part 4 - memory allocation
 		//host - input
-		vector<int> A = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }; //C++11 allows this type of initialisation
-		vector<int> B = { 0, 1, 2, 0, 1, 2, 0, 1, 2, 0 };
+		vector<double> A(100000); //C++11 allows this type of initialisation
+		vector<double> B(100000);
 		
 		size_t vector_elements = A.size();//number of elements
-		size_t vector_size = A.size()*sizeof(int);//size in bytes
+		size_t vector_size = A.size()*sizeof(double);//size in bytes
+
+		 
 
 		//host - output
-		vector<int> C(vector_elements);
+		vector<double> C(vector_elements);
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, vector_size);
@@ -74,19 +86,67 @@ int main(int argc, char **argv) {
 		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vector_size, &B[0]);
 
 		//5.2 Setup and execute the kernel (i.e. device code)
-		cl::Kernel kernel_add = cl::Kernel(program, "add");
-		kernel_add.setArg(0, buffer_A);
-		kernel_add.setArg(1, buffer_B);
-		kernel_add.setArg(2, buffer_C);
+		
+		cl::Event prof_event;
 
-		queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange);
+		
+
+	/*	cl::Kernel kernel_mult = cl::Kernel(program, "mult");
+
+		kernel_mult.setArg(0, buffer_A);
+		kernel_mult.setArg(1, buffer_B);
+		kernel_mult.setArg(2, buffer_C); */
+		
+
+		cl::Kernel kernel_addf = cl::Kernel(program, "add");
+		kernel_addf.setArg(0, buffer_C);
+		kernel_addf.setArg(1, buffer_B);
+		kernel_addf.setArg(2, buffer_C);
+
+		//queue.enqueueNDRangeKernel(kernel_mult, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange,NULL,&prof_event);		
+		queue.enqueueNDRangeKernel(kernel_addf, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange,NULL,&prof_event);
+		
+		/*
+
+		Doing more complex caluclation in the device is slower than using a serial method in this host code why?
+		- Becuase CPU can access memory straight away.
+
+		Changing to float take long because float is different calulartions double is 64 bit and float 32 and int is 16
+
+		 
+		  
+		*/
+
+
+		
+		/*
+
+		
+		cl::Kernel kernel_addMult = cl::Kernel(program, "addMult");
+		kernel_addMult.setArg(0, buffer_A);
+		kernel_addMult.setArg(1, buffer_B);
+		kernel_addMult.setArg(2, buffer_C);
+		
+		queue.enqueueNDRangeKernel(kernel_addMult, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange,NULL,&prof_event);
+	    
+		
+		*/
+
+		 
+
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, vector_size, &C[0]);
 
-		cout << "A = " << A << endl;
+		/*cout << "A = " << A << endl;
 		cout << "B = " << B << endl;
-		cout << "C = " << C << endl;
+		cout << "C = " << C << endl; */
+
+		cout << "Kernel execution time [ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << endl;
+
+
+		cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+
 	}
 	catch (cl::Error err) {
 		cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << endl;
