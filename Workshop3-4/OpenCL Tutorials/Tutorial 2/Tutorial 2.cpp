@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 		//device - buffers
 		cl::Buffer dev_image_before(context, CL_MEM_READ_ONLY, image_before.size());
 		cl::Buffer dev_image_after(context, CL_MEM_READ_WRITE, image_after.size());
-		//cl::Buffer dev_convolution_mask(context, CL_MEM_READ_ONLY, convolution_mask.size()*sizeof(float));
+		cl::Buffer dev_convolution_mask(context, CL_MEM_READ_ONLY, convolution_mask.size()*sizeof(float));
 
 		//Part 5 - device operations
 
@@ -98,19 +98,23 @@ int main(int argc, char **argv) {
 
 		//5.1 Copy images to device memory
 		queue.enqueueWriteBuffer(dev_image_before, CL_TRUE, 0, image_before.size(), &image_before[0]);
-		//queue.enqueueWriteBuffer(dev_convolution_mask, CL_TRUE, 0, convolution_mask.size()*sizeof(float), &convolution_mask[0]);
+		queue.enqueueWriteBuffer(dev_convolution_mask, CL_TRUE, 0, convolution_mask.size()*sizeof(float), &convolution_mask[0]);
 
 		//5.2 Setup and execute the kernel (i.e. device code)
-		cl::Kernel kernel = cl::Kernel(program, "avg_filter2D");
+		cl::Kernel kernel = cl::Kernel(program, "convolution2D");
 		kernel.setArg(0, dev_image_before);
 		kernel.setArg(1, dev_image_after);
-		//kernel.setArg(2, dev_convolution_mask);
-		                                                                                      // 
-		queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(image_width*image_height), cl::NDRange(256), NULL, &prof_event); // This executes
+		kernel.setArg(2, dev_convolution_mask);
+		                                         
+		// 
 
+
+		queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(image_width,image_height), cl::NullRange, NULL, &prof_event); // This executes
+
+		  
 		cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0]; //get device 
 		cerr << kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(device) << endl; //get info
-		 
+		  
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(dev_image_after, CL_TRUE, 0, image_after.size(), &image_after[0]); // Copy from the device to the host, (some overheads)
@@ -118,7 +122,7 @@ int main(int argc, char **argv) {
 		cout << "Kernel execution time [ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << endl;
 
 		cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		       
+		        
 		// loop until Esc is pressed 
 		ImageIO::MainLoop();
 	}
@@ -128,8 +132,8 @@ int main(int argc, char **argv) {
 	catch (const Exception& exc) {
 		std::cerr << "ERROR: " << exc.what() << std::endl;
 	} 
-	 
+	   
 	return 0;
 }
 
- 
+  

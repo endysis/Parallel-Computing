@@ -1,3 +1,5 @@
+
+
 //a simple OpenCL kernel which adds two vectors A and B together into a third vector C
 __kernel void add(__global const int* A, __global const int* B, __global int* C) {
 	int id = get_global_id(0);
@@ -14,22 +16,41 @@ __kernel void add(__global const int* A, __global const int* B, __global int* C)
 }
 
 
-
+ 
 
 //a simple smoothing kernel averaging values in a local window (radius 1)
 __kernel void avg_filter(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
+
+	int lS = get_local_size(0); // local size
+	int gS = get_global_size(0); // Global size
+
+	//printf("GS Value : %d\n", gS);
+	if(id == 0){ 
+	B[id] = (A[id] + A[id + 1])/2;
+	} else if ((id + 1) >= gS) { // If the last element + 1 is bigger than the size
+	B[id] = (A[id - 1] + A[id])/2;
+	printf("LS Value : %d\n", lS);
+	printf("GS Value : %d\n", gS);
+	} 
+	else { 
 	B[id] = (A[id - 1] + A[id] + A[id + 1])/3;
+	printf("Entered condition\n");
+	}
+	//printf("LS Value : %d\n", lS);
+	//printf("GS Value : %d\n", gS);
+
+		/* B[id] = (A[id - 1] + A[id] + A[id + 1])/3;
+		printf("%d,\n", A[id + 1]); //do it for each work item */
 }
 
 
 //a simple smoothing kernel averaging values in a local window Range 5
 __kernel void avg_filter5(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
-
 	B[id] = (A[id - 2] + A[id - 1] + A[id] + A[id + 1] + A[id + 2])/3;
+	}
 
-}
 
 
 

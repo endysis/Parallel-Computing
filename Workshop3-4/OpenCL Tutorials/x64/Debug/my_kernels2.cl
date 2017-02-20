@@ -4,14 +4,25 @@ __kernel void identity(__global const uchar4* A, __global uchar4* B) {
 	B[id] = A[id];
 }
 
+
+
 //simple 2D identity kernel
 __kernel void identity2D(__global const uchar4* A, __global uchar4* B) {
 	int x = get_global_id(0);
 	int y = get_global_id(1);
 	int width = get_global_size(0); //width in pixels
 	int id = x + y*width;
+
 	B[id] = A[id];
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -33,6 +44,24 @@ __kernel void avg_filter2D(__global const uchar4* A, __global uchar4* B) {
 	B[id] = convert_uchar4(result); //convert back to uchar4 
 }
 
+
+//2D averaging filter
+__kernel void avg_filter2D5(__global const uchar4* A, __global uchar4* B) {
+	int x = get_global_id(0);
+	int y = get_global_id(1);
+	int width = get_global_size(0); //width in pixels
+	int id = x + y*width;
+
+	uint4 result = (uint4)(0);//zero all 4 components
+
+	for (int i = (x-2); i <= (x+2); i++)
+	for (int j = (y-2); j <= (y+2); j++) 
+		result += convert_uint4(A[i + j*width]); //convert pixel values to uint4 so the sum can be larger than 255
+
+	result /= (uint4)(25); //normalise all components (the result is a sum of 9 values) 
+
+	B[id] = convert_uchar4(result); //convert back to uchar4 
+}
 
 
 
@@ -109,10 +138,9 @@ __kernel void rgb2greyo(__global const uchar4* A, __global uchar4* B){
 	B[id].x = B[id].y;
 	B[id].y = B[id].y;
 	B[id].z = B[id].y;
-
-
-
 }
+
+
 
 __kernel void rgb2grey(__global const uchar4* A, __global uchar4* B){ 
 	int x = get_global_id(0);
