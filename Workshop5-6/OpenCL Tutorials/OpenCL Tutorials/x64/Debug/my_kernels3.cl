@@ -70,7 +70,6 @@ __kernel void reduce_add_3(__global const int* A, __global int* B, __local int* 
 }
 
 
-
 //reduce using local memory + accumulation of local sums into a single location
 //works with any number of groups - not optimal!
 __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* scratch) {

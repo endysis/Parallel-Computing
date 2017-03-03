@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
 		cl::Program program(context, sources);
 		cl::Event prof_event;
-		
+				cout << "Working" << endl;
 
 		//build and debug the kernel code
 		try {
@@ -113,6 +113,12 @@ int main(int argc, char **argv) {
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL,&prof_event);
 
+		cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0]; //get device
+		cout << "Working" << endl;
+
+		cerr << "Prefered Size : " << kernel_1.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE> (device) << endl; //get info
+
+		 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
@@ -121,10 +127,13 @@ int main(int argc, char **argv) {
 		std::cout << "Kernel execution time[ns]:"<<prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 	}
+	 
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
 	}
-	  
+	   
 	return 0;
+
+	   
 }
  
