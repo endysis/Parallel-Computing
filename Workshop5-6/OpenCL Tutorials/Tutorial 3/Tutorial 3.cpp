@@ -20,7 +20,7 @@ void print_help() {
 	std::cerr << "  -l : list all platforms and devices" << std::endl;
 	std::cerr << "  -h : print this message" << std::endl;
 }
-
+ 
 int main(int argc, char **argv) {
 	//Part 1 - handle command line options such as device selection, verbosity, etc.
 	int platform_id = 0;
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 		else if (strcmp(argv[i], "-l") == 0) { std::cout << ListPlatformsDevices() << std::endl; }
 		else if (strcmp(argv[i], "-h") == 0) { print_help(); }
 	}
-	
+
 	//detect any potential exceptions
 	try {
 		//Part 2 - host operations
@@ -51,32 +51,31 @@ int main(int argc, char **argv) {
 		AddSources(sources, "my_kernels3.cl");
 
 		cl::Program program(context, sources);
-		cl::Event prof_event;
-				cout << "Working" << endl;
-
+		cl::Event prof_event;		 		cout << "Working" << endl;
+		  
 		//build and debug the kernel code
 		try {
 			program.build();
-		}
+		} 
 		catch (const cl::Error& err) {
 			std::cout << "Build Status: " << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			std::cout << "Build Options:\t" << program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			std::cout << "Build Log:\t " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			throw err;
-		}
-		 
+		} 
+		         
 		typedef int mytype;
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A = {2,5,1200,5,6,8,1300,4,5,6};//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
-		 
+		std::vector<mytype> A = {20,50,1200,1,6,8,1300,2,5,6};//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		  
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
 		size_t local_size = 10;
-
-		size_t padding_size = A.size() % local_size;
 		 
+		size_t padding_size = A.size() % local_size;
+		  
 		//if the input vector is not a multiple of the local_size
 		//insert additional neutral elements (0 for addition) so that the total will not be affected
 		if (padding_size) {
@@ -85,11 +84,11 @@ int main(int argc, char **argv) {
 			//append that extra vector to our input
 			A.insert(A.end(), A_ext.begin(), A_ext.end());
 		}
-		            
+		                
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;
-		  
+		    
 		//host - output
 		std::vector<mytype> B = {1};
 		size_t output_size = B.size()*sizeof(mytype);//size in bytes
@@ -99,18 +98,17 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 
 		//Part 5 - device operations
-
-
+		   
 		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_B, 1, 0, output_size);//zero B buffer on device memory
-		 
+		queue.enqueueFillBuffer(buffer_B, 100000, 0, output_size);//zero B buffer on device memory
+		   
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "maxVec");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
-		  
+		   
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL,&prof_event);
 
@@ -127,12 +125,12 @@ int main(int argc, char **argv) {
 		std::cout << "Kernel execution time[ns]:"<<prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 	}
-	
+	 
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
 	}
 	    
-	return 0;
+	return 0; 
 }
 
 

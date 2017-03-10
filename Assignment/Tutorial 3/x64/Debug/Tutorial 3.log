@@ -1,4 +1,6 @@
-﻿  Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 3.exe
+﻿  Tutorial 3.cpp
+Tutorial 3.cpp(97): warning C4244: 'argument': conversion from 'float' to 'const int', possible loss of data
+  Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 3.exe
   Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 3.pdb (Full PDB)
   my_kernels3.cl
           1 file(s) copied.

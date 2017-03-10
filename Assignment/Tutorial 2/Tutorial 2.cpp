@@ -52,41 +52,8 @@ int main(int argc, char **argv) {
 		ImageIO::AddWindow("Before", image_before, image_width, image_height);
 		ImageIO::AddWindow("After", image_after, image_width, image_height);
 
-
-		WeatherItem wI;
-		vector<WeatherItem> weatherList;
-
-		vector<float> weatherTemper; // Testing array
-
-		// Should we read the file in parallel ?
-		ifstream inputFile("temp_lincolnshire_short.txt");
-		string weatherStation1;
-		int weatherYear;
-		int weatherMonth;
-		int weatherDay;
-		int weatherTime;
-		float weatherTemp;
-
-		//int c = 0;
-
-		while(inputFile >> weatherStation1 >> weatherYear >> weatherMonth >> weatherDay >> weatherTime >> weatherTemp){
-			//cout << "Variable " << weatherStation1 << endl;
-			wI.setWeatherStation(weatherStation1);
-			wI.setYearCollected(weatherYear);
-			wI.setMonth(weatherMonth);
-			wI.setDay(weatherDay);
-			wI.setTime(weatherTime);
-			wI.setTemp(weatherTemp);
-			weatherList.push_back(wI);
-			weatherTemper.push_back(weatherTemp);
-
-			//string s = weatherList[c].getWeatherStation();
-			//cout << "Vector Element " << s << endl;
-			//c++;
-		}
-
 		//Part 2 - host operations
-		//2.1 Select computing devices
+		//2.1 Select computing devices - 
 		cl::Context context = GetContext(platform_id, device_id);
 
 		//display the selected device
@@ -125,7 +92,7 @@ int main(int argc, char **argv) {
 		//queue.enqueueWriteBuffer(dev_convolution_mask, CL_TRUE, 0, convolution_mask.size()*sizeof(float), &convolution_mask[0]);
 
 		//5.2 Setup and execute the kernel (i.e. device code)
-		cl::Kernel kernel = cl::Kernel(program, "identity");
+		cl::Kernel kernel = cl::Kernel(program, "minVec");
 		kernel.setArg(0, dev_image_before);
 		kernel.setArg(1, dev_image_after);
 		//kernel.setArg(2, dev_convolution_mask);
