@@ -99,39 +99,37 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
 	}
 }
 
-
- __kernel void average(__global const int* A, __global int* B, __local int* scratch){ 
+ __kernel void average(__global const int* A, __global int* B,__local int* scratch){ 
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
+	int G = get_global_size(0);
 	
 	scratch[lid] = A[id]; // All value witin the vector go from gloabl to local memory into the scratch
 
 	// Is all this one work group??
-	printf("Conversion\n");
+	//printf("Conversion\n");
+	//printf("Global size %d\n", G);
+	//printf("Vector size %d\n", vecSize);
 	barrier(CLK_LOCAL_MEM_FENCE); // wait for each local thread to copy over. so yeah elements are run in parallel
 
 	int temp;
-
+	
 	for (int i = 1; i < N; i *= 2) {
 		if (!(lid % (i * 2)) && ((lid + i) < N)) { 
-			printf("%d\n",scratch[lid]); // All values within the vector are operated upon at once, is this only one work group?
-			if(scratch[lid] > scratch[lid + i]){ // So before it was if(scratch[lid] > A[lid + i]) which didnt work is searches in A where the 1200 value has not been swaped with 1 in the i = 1 (first) iteration
-				temp = scratch[lid];
-				scratch[lid] = scratch[lid + i];
-				printf("Result Out : %d has been replaced with %d\n",temp,scratch[lid]);
+				scratch[lid] += scratch[lid + i];
 			}
-		}
-
-		printf("Before barrier %d\n", i);
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
+
 	if (!lid) {
-		atomic_min(&B[0],scratch[lid]);   // Everything added to the first element in the global memory 
+		//printf("First Before %d\n", scratch[lid]);
+		//scratch[lid] = scratch[lid]/G;
+		//printf("First After %d\n", scratch[lid]);
+		printf("Global Size %d\n", G); // So it output the global size, but when I try to divide, it outpus zero.
+		atomic_add(&B[0],scratch[lid]/G);   // Everything added to the first element in the global memory 
 	}
 }
-
-
 
 __kernel void minVec(__global const int* A, __global int* B, __local int* scratch){ 
 	int id = get_global_id(0);
@@ -163,6 +161,37 @@ __kernel void minVec(__global const int* A, __global int* B, __local int* scratc
 	}
 }
 
+
+
+__kernel void maxVec(__global const int* A, __global int* B, __local int* scratch){ 
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+	
+	scratch[lid] = A[id]; // All value witin the vector go from gloabl to local memory into the scratch
+
+	// Is all this one work group??
+	printf("Conversion\n");
+	barrier(CLK_LOCAL_MEM_FENCE); // wait for each local thread to copy over. so yeah elements are run in parallel
+
+	int temp;
+
+	for (int i = 1; i < N; i *= 2) {
+		if (!(lid % (i * 2)) && ((lid + i) < N)) { 
+			printf("%d\n",scratch[lid]); // All values within the vector are operated upon at once, is this only one work group?
+			if(scratch[lid] < scratch[lid + i]){ // So before it was if(scratch[lid] > A[lid + i]) which didnt work is searches in A where the 1200 value has not been swaped with 1 in the i = 1 (first) iteration
+				temp = scratch[lid];
+				scratch[lid] = scratch[lid + i];
+				printf("Result Out : %d has been replaced with %d\n",temp,scratch[lid]);
+			}
+		}
+		printf("Before barrier %d\n", i);
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+	if (!lid) {
+		atomic_max(&B[0],scratch[lid]);   // Everything added to the first element in the global memory 
+	}
+}
 
 
 
