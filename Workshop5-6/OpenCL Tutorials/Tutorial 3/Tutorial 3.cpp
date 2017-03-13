@@ -55,15 +55,15 @@ int main(int argc, char **argv) {
 		  
 		//build and debug the kernel code
 		try {
-			program.build();
+			program.build(); 
 		} 
 		catch (const cl::Error& err) {
 			std::cout << "Build Status: " << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			std::cout << "Build Options:\t" << program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			std::cout << "Build Log:\t " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			throw err;
-		} 
-		         
+		}   
+		                     
 		typedef int mytype;
 		//Part 4 - memory allocation
 		//host - input
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
 		size_t local_size = 10;
-		 
+		   
 		size_t padding_size = A.size() % local_size;
 		  
 		//if the input vector is not a multiple of the local_size
@@ -104,10 +104,11 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 100000, 0, output_size);//zero B buffer on device memory
 		   
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "maxVec");
+		cl::Kernel kernel_1 = cl::Kernel(program, "scan_add");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(3, cl::Local(local_size * sizeof(mytype)));//local memory size
 		   
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL,&prof_event);

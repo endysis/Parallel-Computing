@@ -1,5 +1,4 @@
 ﻿  Tutorial 3.cpp
-Tutorial 3.cpp(104): warning C4244: 'argument': conversion from 'float' to 'const int', possible loss of data
 Tutorial 3.cpp(164): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
 Tutorial 3.cpp(168): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'unsigned __int64'
   Tutorial 3.cpp(168): note: consider using '%zd' in the format string

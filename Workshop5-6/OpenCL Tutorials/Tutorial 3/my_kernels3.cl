@@ -173,8 +173,6 @@ __kernel void minVec(__global const int* A, __global int* B, __local int* scratc
 
 
 
-
-
 __kernel void maxVec(__global const int* A, __global int* B, __local int* scratch){ 
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
@@ -206,7 +204,6 @@ __kernel void maxVec(__global const int* A, __global int* B, __local int* scratc
 }
 
 
-
 //a very simple histogram implementation
 __kernel void hist_simple(__global const int* A, __global int* H) { 
 	int id = get_global_id(0);
@@ -219,35 +216,52 @@ __kernel void hist_simple(__global const int* A, __global int* H) {
 
 //a double-buffered version of the Hillis-Steele inclusive scan
 //requires two additional input arguments which correspond to two local buffers
+// Step complxity logn 
+//Work complexity nlogn
+
+
+// So in using the Hills Inclusive, it pastes the sum in the last element of the array (not the first like in reduce).
+
+// I need to paste the Result of each work group into a new array of the size of the number of work groups from the previous run.
+
+
 __kernel void scan_add(__global const int* A, __global int* B, __local int* scratch_1, __local int* scratch_2) {
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
-	__local int *scratch_3;//used for buffer swap
+	__local int *scratch_3; //used for buffer swap
 
 	//cache all N values from global memory to local memory
 	scratch_1[lid] = A[id];
-
-	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
-
-	for (int i = 1; i < N; i *= 2) {
-		if (lid >= i)
+	 
+	barrier(CLK_LOCAL_MEM_FENCE); //wait for all local threads to finish copying from global to local memory
+	printf("lid is : %d\n",lid);
+	for (int i = 1; i < N; i *= 2){  
+		if (lid >= i){
+		printf("%d : is bigger or equal to :  %d\n",lid,i); 
+		printf("Into for loop %d\n", scratch_1[lid]);
 			scratch_2[lid] = scratch_1[lid] + scratch_1[lid - i];
-		else
+			printf("%d : is added to : %d\n",scratch_1[lid], scratch_1[lid - i]);
+		}
+		else {
 			scratch_2[lid] = scratch_1[lid];
-
+			}
+		printf("Before Barrier : %d\n", i);
 		barrier(CLK_LOCAL_MEM_FENCE);
 
+		// I need to understand the swaping here...
 		//buffer swap
-		scratch_3 = scratch_2;
-		scratch_2 = scratch_1;
-		scratch_1 = scratch_3;
+		//scratch_3 = scratch_2;
+	
+		//scratch_2 = scratch_1;
+		//scratch_1 = scratch_3;
+	
 	}
 
 	//copy the cache to output array
 	B[id] = scratch_1[lid];
 }
-
+ 
 //calculates the block sums
 __kernel void block_sum(__global const int* A, __global int* B, int local_size) {
 	int id = get_global_id(0);
@@ -268,3 +282,11 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 	int gid = get_group_id(0);
 	A[id] += B[gid];
 }
+
+
+
+
+
+
+
+
