@@ -213,6 +213,7 @@ __kernel void minVec(__global const int* A, __global int* B, __local int* scratc
 	// on the first element of each group. 
 
 
+
 __kernel void maxVec(__global const int* A, __global int* B, __local int* scratch){ 
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
@@ -256,6 +257,8 @@ __kernel void hist_simple(__global const int* A, __global int* H) {
 
 	atomic_inc(&H[bin_index]);//serial operation, not very efficient!
 }
+
+
 
 //a double-buffered version of the Hillis-Steele inclusive scan
 //requires two additional input arguments which correspond to two local buffers

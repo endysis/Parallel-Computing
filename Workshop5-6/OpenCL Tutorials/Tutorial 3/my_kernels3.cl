@@ -29,6 +29,7 @@ __kernel void reduce_add_1(__global const int* A, __global int* B) {
 		B[id] += B[id + 8];
 }
  
+
 //flexible step reduce 
 __kernel void reduce_add_2(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
@@ -45,6 +46,7 @@ __kernel void reduce_add_2(__global const int* A, __global int* B) {
 		barrier(CLK_GLOBAL_MEM_FENCE);
 	} 
 }
+
 
 
 //reduce using local memory (so called privatisation)
@@ -98,6 +100,8 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
 		atomic_add(&B[0],scratch[lid]);   // Everything added to the first element in the global memory 
 	}
 }
+
+
 
 
  __kernel void average(__global const int* A, __global int* B, __local int* scratch){ 
@@ -169,6 +173,7 @@ __kernel void minVec(__global const int* A, __global int* B, __local int* scratc
 		atomic_min(&B[0],scratch[lid]);   // Everything added to the first element in the global memory 
 	}
 }
+
 
 
 
@@ -250,23 +255,35 @@ __kernel void scan_add(__global const int* A, __global int* B, __local int* scra
 		barrier(CLK_LOCAL_MEM_FENCE);
 
 		// I need to understand the swaping here...
-		//buffer swap
-		//scratch_3 = scratch_2;
-	
-		//scratch_2 = scratch_1;
-		//scratch_1 = scratch_3;
+		//buffer swap 
+		scratch_3 = scratch_2;
+		scratch_2 = scratch_1;
+		scratch_1 = scratch_3;
+
+		// Swaping the pointers
+		// The reason is you save the tempory data from the last iteration in scratch 2, because scrtach two will be altered again,
+		// and you need to store its buffer to read from, otherwise you would read from scrtach one ""Which is still on the first iteration of the buffer"
 	
 	}
-
+	 
 	//copy the cache to output array
 	B[id] = scratch_1[lid];
 }
  
+
+
+
 //calculates the block sums
 __kernel void block_sum(__global const int* A, __global int* B, int local_size) {
 	int id = get_global_id(0);
 	B[id] = A[(id+1)*local_size-1];
 }
+
+
+
+
+
+
 
 //simple exclusive serial scan based on atomic operations - sufficient for small number of elements
 __kernel void scan_add_atomic(__global int* A, __global int* B) {
@@ -275,6 +292,10 @@ __kernel void scan_add_atomic(__global int* A, __global int* B) {
 	for (int i = id+1; i < N; i++)
 		atomic_add(&B[i], A[id]);
 }
+
+
+
+
 
 //adjust the values stored in partial scans by adding block sums to corresponding blocks
 __kernel void scan_add_adjust(__global int* A, __global const int* B) {

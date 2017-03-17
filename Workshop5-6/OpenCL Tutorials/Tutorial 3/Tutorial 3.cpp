@@ -19,13 +19,13 @@ void print_help() {
 	std::cerr << "  -d : select device" << std::endl;
 	std::cerr << "  -l : list all platforms and devices" << std::endl;
 	std::cerr << "  -h : print this message" << std::endl;
-}
+} 
  
 int main(int argc, char **argv) {
 	//Part 1 - handle command line options such as device selection, verbosity, etc.
 	int platform_id = 0;
 	int device_id = 0;
-
+	 
 	for (int i = 1; i < argc; i++) {
 		if ((strcmp(argv[i], "-p") == 0) && (i < (argc - 1))) { platform_id = atoi(argv[++i]); }
 		else if ((strcmp(argv[i], "-d") == 0) && (i < (argc - 1))) { device_id = atoi(argv[++i]); }
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 		AddSources(sources, "my_kernels3.cl");
 
 		cl::Program program(context, sources);
-		cl::Event prof_event;		 		cout << "Working" << endl;
+		cl::Event prof_event;		 		cout << "Working" << endl; 
 		  
 		//build and debug the kernel code
 		try {
@@ -63,18 +63,18 @@ int main(int argc, char **argv) {
 			std::cout << "Build Log:\t " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			throw err;
 		}   
-		                     
+		                       
 		typedef int mytype;
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A = {20,50,1200,1,6,8,1300,2,5,6};//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		std::vector<mytype> A = {20,50,30,1,6,8,13,2,5,6,3,4,6,7,3,9};//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
 		  
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
-		size_t local_size = 10;
+		size_t local_size = 8;
 		   
-		size_t padding_size = A.size() % local_size;
+		size_t padding_size = A.size() % local_size;  
 		  
 		//if the input vector is not a multiple of the local_size
 		//insert additional neutral elements (0 for addition) so that the total will not be affected
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
 			//create an extra vector with neutral values
 			std::vector<int> A_ext(local_size-padding_size, 0);
 			//append that extra vector to our input
-			A.insert(A.end(), A_ext.begin(), A_ext.end());
+			A.insert(A.end(), A_ext.begin(), A_ext.end()); 
 		}
 		                
 		size_t input_elements = A.size();//number of input elements
@@ -90,18 +90,30 @@ int main(int argc, char **argv) {
 		size_t nr_groups = input_elements / local_size;
 		    
 		//host - output
-		std::vector<mytype> B = {1};
+		std::vector<mytype> B(input_elements);
 		size_t output_size = B.size()*sizeof(mytype);//size in bytes
 		 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
+
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 
+		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, nr_groups); //  Final output vectio
+
+		cl::Buffer buffer_D(context, CL_MEM_READ_WRITE, output_size); //  Final output vectio
+
+		cl::Buffer buffer_E(context, CL_MEM_READ_WRITE, output_size); //  Final output vectio
+
+
+
+
 		//Part 5 - device operations
-		   
+
 		//5.1 copy array A to and initialise other arrays on device memory
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		 queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_B, 100000, 0, output_size);//zero B buffer on device memory
+		queue.enqueueFillBuffer(buffer_C, 100000, 0, output_size);//zero B buffer on device memory
+		queue.enqueueFillBuffer(buffer_D, 100000, 0, output_size);//zero B buffer on device memory
 		   
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "scan_add");
@@ -109,15 +121,56 @@ int main(int argc, char **argv) {
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 		kernel_1.setArg(3, cl::Local(local_size * sizeof(mytype)));//local memory size
+
+		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+
+		std::cout << " Before : A = " << A << std::endl;
+		std::cout << "Before : B = " << B << std::endl; 
+		
+
+		// So for the ten elements the array length would only be one?
+		cl::Kernel kernel_2 = cl::Kernel(program, "block_sum");
+		kernel_2.setArg(0, buffer_B);
+		kernel_2.setArg(1, buffer_C);
+		kernel_2.setArg(2, nr_groups); // To get the size of the aditional buffer, (one element from each work group) and there is only one work group.
+
+		
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &B[0]);
+
+
+
+							   // So for the ten elements the array length would only be one?
+		cl::Kernel kernel_3 = cl::Kernel(program, "scan_add_atomic");
+		kernel_3.setArg(0, buffer_C); 
+		kernel_3.setArg(1, buffer_D); 
+		
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &B[0]);
+		 
+		
+												   // So for the ten elements the array length would only be one?
+		cl::Kernel kernel_4 = cl::Kernel(program, "scan_add_adjust");
+		kernel_4.setArg(0, buffer_D);
+		kernel_4.setArg(1, buffer_E);
+	
+
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &B[0]);
+		  
 		   
 		//call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL,&prof_event);
+	
+		
+		queue.enqueueNDRangeKernel(kernel_3, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueNDRangeKernel(kernel_4, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+
 
 		cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0]; //get device
 		cout << "Working" << endl;
-
 		cerr << "Prefered Size : " << kernel_1.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE> (device) << endl; //get info
-
+		                                                                                                                                                                                                                                                                        
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
@@ -136,8 +189,8 @@ int main(int argc, char **argv) {
 
 
 
-
-
+ 
+// This will only work for one work group?
 
 
 
