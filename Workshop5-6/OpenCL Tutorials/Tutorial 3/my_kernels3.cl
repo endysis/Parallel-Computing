@@ -285,6 +285,8 @@ __kernel void block_sum(__global const int* A, __global int* B, int local_size) 
 
 
 
+
+
 //simple exclusive serial scan based on atomic operations - sufficient for small number of elements
 __kernel void scan_add_atomic(__global int* A, __global int* B) {
 	int id = get_global_id(0);

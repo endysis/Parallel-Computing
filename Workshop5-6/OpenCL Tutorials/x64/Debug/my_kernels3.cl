@@ -270,11 +270,20 @@ __kernel void scan_add(__global const int* A, __global int* B, __local int* scra
 	B[id] = scratch_1[lid];
 }
  
+
+
+
 //calculates the block sums
 __kernel void block_sum(__global const int* A, __global int* B, int local_size) {
 	int id = get_global_id(0);
 	B[id] = A[(id+1)*local_size-1];
 }
+
+
+
+
+
+
 
 
 

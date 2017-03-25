@@ -51,11 +51,15 @@ int main(int argc, char **argv) {
 		AddSources(sources, "my_kernels3.cl");
 
 		cl::Program program(context, sources);
-		cl::Event prof_event;		 		cout << "Working" << endl; 
+		cl::Event prof_event;
+		 
+		cout << "Working" << endl; 
 		  
 		//build and debug the kernel code
 		try {
 			program.build(); 
+
+			cout << "Finishes bulid" << endl;
 		} 
 		catch (const cl::Error& err) {
 			std::cout << "Build Status: " << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
@@ -88,11 +92,17 @@ int main(int argc, char **argv) {
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;
-		    
+		
+		cout << nr_groups << " da group number" << endl;    
+
 		//host - output
 		std::vector<mytype> B(input_elements);
 		size_t output_size = B.size()*sizeof(mytype);//size in bytes
-		 
+		cout << "Finishes output host size" << endl;
+
+		std::vector<mytype> C(2);
+
+
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 
@@ -100,21 +110,19 @@ int main(int argc, char **argv) {
 
 		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, nr_groups); //  Final output vectio
 
-		cl::Buffer buffer_D(context, CL_MEM_READ_WRITE, output_size); //  Final output vectio
 
-		cl::Buffer buffer_E(context, CL_MEM_READ_WRITE, output_size); //  Final output vectio
-
-
-
+		cout << "Makes buffers" << endl;
+		 
 
 		//Part 5 - device operations
 
 		//5.1 copy array A to and initialise other arrays on device memory
-		 queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_B, 100000, 0, output_size);//zero B buffer on device memory
-		queue.enqueueFillBuffer(buffer_C, 100000, 0, output_size);//zero B buffer on device memory
-		queue.enqueueFillBuffer(buffer_D, 100000, 0, output_size);//zero B buffer on device memory
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueFillBuffer(buffer_B, 1000, 0, output_size);//zero B buffer on device memory
 		   
+		cout << "Queues buffers" << endl;
+
+
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "scan_add");
 		kernel_1.setArg(0, buffer_A);
@@ -127,57 +135,40 @@ int main(int argc, char **argv) {
 
 		std::cout << " Before : A = " << A << std::endl;
 		std::cout << "Before : B = " << B << std::endl; 
-		
+
+		int groups = nr_groups;
 
 		// So for the ten elements the array length would only be one?
 		cl::Kernel kernel_2 = cl::Kernel(program, "block_sum");
 		kernel_2.setArg(0, buffer_B);
 		kernel_2.setArg(1, buffer_C);
-		kernel_2.setArg(2, nr_groups); // To get the size of the aditional buffer, (one element from each work group) and there is only one work group.
+		kernel_2.setArg(2, groups); // To get the size of the aditional buffer, (one element from each work group) and there is only one work group.
+		
+
+		// So what we are trying to do is understand how block sums work,
+		// we have solved one erro, but block sums is meant to only output two length array
+		// because of the two workgroup size and we get the second element 70 (from B) in pos [0] an 1 in pos[1]
+
+
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(2), cl::NDRange(2), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0,nr_groups, &C[0]);
 
 		
-		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &B[0]);
 
+		cout << "C : " << C << endl;
 
 
 							   // So for the ten elements the array length would only be one?
-		cl::Kernel kernel_3 = cl::Kernel(program, "scan_add_atomic");
-		kernel_3.setArg(0, buffer_C); 
-		kernel_3.setArg(1, buffer_D); 
-		
-		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &B[0]);
-		 
-		
-												   // So for the ten elements the array length would only be one?
-		cl::Kernel kernel_4 = cl::Kernel(program, "scan_add_adjust");
-		kernel_4.setArg(0, buffer_D);
-		kernel_4.setArg(1, buffer_E);
+	
 	
 
-		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &B[0]);
-		  
-		   
-		//call all kernels in a sequence
-	
-		
-		queue.enqueueNDRangeKernel(kernel_3, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueNDRangeKernel(kernel_4, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 
 
-		cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0]; //get device
+		/*cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0]; //get device
 		cout << "Working" << endl;
-		cerr << "Prefered Size : " << kernel_1.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE> (device) << endl; //get info
-		                                                                                                                                                                                                                                                                        
-		//5.3 Copy the result from device to host
-		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-
-		std::cout << "A = " << A << std::endl;
-		std::cout << "B = " << B << std::endl;
-		std::cout << "Kernel execution time[ns]:"<<prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		cerr << "Prefered Size : " << kernel_1.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE> (device) << endl; //get info*/
+		                                                                                                                                                                                                                      		/*std::cout << "Kernel execution time[ns]:"<<prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;*/
 	}
 	 
 	catch (cl::Error err) {
