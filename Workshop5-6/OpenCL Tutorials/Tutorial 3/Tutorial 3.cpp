@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
 			std::cout << "Build Log:\t " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			throw err;
 		}   
-		                       
+		                        
 		typedef int mytype;
 		//Part 4 - memory allocation
 		//host - input
@@ -77,9 +77,9 @@ int main(int argc, char **argv) {
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
 		size_t local_size = 8;
-		   
+		     
 		size_t padding_size = A.size() % local_size;  
-		  
+		   
 		//if the input vector is not a multiple of the local_size
 		//insert additional neutral elements (0 for addition) so that the total will not be affected
 		if (padding_size) {
@@ -87,28 +87,28 @@ int main(int argc, char **argv) {
 			std::vector<int> A_ext(local_size-padding_size, 0);
 			//append that extra vector to our input
 			A.insert(A.end(), A_ext.begin(), A_ext.end()); 
-		}
-		                
+		}  
+		                   
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;
-		
+		 
 		cout << nr_groups << " da group number" << endl;    
-
+		 
 		//host - output
 		std::vector<mytype> B(input_elements);
 		size_t output_size = B.size()*sizeof(mytype);//size in bytes
 		cout << "Finishes output host size" << endl;
 
-		std::vector<mytype> C(2);
-
+		std::vector<mytype> C = {99,99};
+		 
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 
-		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, nr_groups); //  Final output vectio
+		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, output_size); //  Final output vectio
 
 
 		cout << "Makes buffers" << endl;
@@ -121,40 +121,44 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 1000, 0, output_size);//zero B buffer on device memory
 		   
 		cout << "Queues buffers" << endl;
-
-
+		  
+		   
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "scan_add");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
-		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
 		kernel_1.setArg(3, cl::Local(local_size * sizeof(mytype)));//local memory size
-
+		    
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-
+		      
+		     
 		std::cout << " Before : A = " << A << std::endl;
 		std::cout << "Before : B = " << B << std::endl; 
-
+		   
 		int groups = nr_groups;
-
+		int loc_size = local_size;
+		    
+		      
 		// So for the ten elements the array length would only be one?
-		cl::Kernel kernel_2 = cl::Kernel(program, "block_sum");
+		cl::Kernel kernel_2 = cl::Kernel(program, "block_sumReduce");
 		kernel_2.setArg(0, buffer_B);
 		kernel_2.setArg(1, buffer_C);
-		kernel_2.setArg(2, groups); // To get the size of the aditional buffer, (one element from each work group) and there is only one work group.
-		
-
+		kernel_2.setArg(2, loc_size); // To get the size of the aditional buffer, (one element from each work group) and there is only one work group.
+		kernel_2.setArg(3, groups);
+		     
+			  
 		// So what we are trying to do is understand how block sums work,
 		// we have solved one erro, but block sums is meant to only output two length array
 		// because of the two workgroup size and we get the second element 70 (from B) in pos [0] an 1 in pos[1]
 
-
-		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(2), cl::NDRange(2), NULL, &prof_event);
+		 
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(groups), cl::NullRange, NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0,nr_groups, &C[0]);
 
 		
-
+		 
 		cout << "C : " << C << endl;
 
 

@@ -1,5 +1,6 @@
 ﻿  Tutorial 3.cpp
-Tutorial 3.cpp(139): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+Tutorial 3.cpp(140): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+Tutorial 3.cpp(141): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
   Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Workshop5-6\OpenCL Tutorials\x64\Debug\Tutorial 3.exe
   Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Workshop5-6\OpenCL Tutorials\x64\Debug\Tutorial 3.pdb (Full PDB)
   my_kernels3.cl

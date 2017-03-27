@@ -271,15 +271,85 @@ __kernel void scan_add(__global const int* A, __global int* B, __local int* scra
 }
  
 
-
+  
 
 //calculates the block sums
 __kernel void block_sum(__global const int* A, __global int* B, int local_size) {
 	int id = get_global_id(0);
+	printf("B[id] = [(id+1)*local_size-1]\n");
+	printf("%d = %d\n",id, (id + 1)*local_size - 1); // So all this is doing is getting the last element in the array we need the last element of each work group  
+	 // Still dont get why they times the id by the local size, why not just give the local size?
+	
 	B[id] = A[(id+1)*local_size-1];
 }
 
 
+
+ 
+__kernel void block_sumReduce(__global const int* A, __global int* B, int inputLocal_size ,int outputLocal_size) {
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+
+	int G = get_global_size(0);
+	int N = get_local_size(0);
+
+	int stepNum = inputLocal_size/outputLocal_size;
+
+//	printf("%d , %d\n",G,N);
+
+
+	//printf("%d\n",stepNum);
+
+	/*for(int i = (inputLocal_size - 1); i >= 0; i - (stepDownNum - 1)){ 
+	//	B[id] = A[i];
+		printf("StepDownNum = %d",stepDownNum);
+	}*/ 
+	 
+	/*
+	for(int i = 1; i < 15; i+=(stepNum-1)){ 
+		printf("%d\n",stepNum);
+		printf("Id in A : %d\n",A[id+i]);
+		printf("%d\n",i);
+	}*/
+
+	printf("%d the local size is\n", A[(lid+1)*8-1]);
+
+	//printf("%d sent size is %d\n",inputLocal_size);
+
+	printf("local id %d\n",lid);
+
+	
+
+	for(int i = 1; i < N; i++){ 
+	B[lid] = A[(id + 1) * (8-1)];
+	__syncthreads();
+	}
+
+	// Cant seem to get another element in the second position of the output array
+
+} 
+
+
+ 
+// So It breaks the A array into two groups/sections (or the number of workgroups designed for the kernel) and
+// get the last element of each section  - I wasnt under standing parrael
+
+
+
+
+// So I think you cant use this function with elements which have more than one work gorup
+// In this example it will only get the end element
+// However we want to get two elements from two separte work groups
+// So in this case element 8 and 16
+
+// We need to divide the size of A by the new local size to get the number of iterations we want to reduce 
+// the vector by
+
+// if there was a workgroup size of 5 and we had 5 groups
+// The elements we want in the block are the 5th 10th 15th 20th 25th
+// so to get each one we need to -5 each time
+// so we could use a reduce function which minus 5 each time
+ 
 
 
 

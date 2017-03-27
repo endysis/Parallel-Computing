@@ -100,6 +100,47 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
 }
 
 
+															// Am i fine to just pass integer values here ? 
+__kernel void standDev(__global const int* A, __global int* B, int mean,__local int* scratch) {
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+
+	//cache all N values from global memory to local memory
+	scratch[lid] = A[id];
+
+	scratch[lid] -= mean;
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i *= 2) {
+		if (!(lid % (i * 2)) && ((lid + i) < N))
+			scratch[lid] += scratch[lid + i];
+		//printf("%d\n",scratch[lid]);
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	//printf("break\n");
+
+	//we add results from all local groups to the first element of the array
+	//serial operation! but works for any group size
+	//copy the cache to output array
+	if (!lid) {
+		atomic_add(&B[0], scratch[lid]);   // Everything added to the first element in the global memory 
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
  __kernel void average(__global const int* A, __global int* B,__local int* scratch){ 
@@ -136,7 +177,7 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
  
  
  
- __kernel void average(__global const float* A, __global float* B,__local float* scratch){ 
+ __kernel void average1(__global const float* A, __global float* B,__local float* scratch){ 
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);

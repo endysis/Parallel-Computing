@@ -100,9 +100,84 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
 }
 
 
+															// Am i fine to just pass integer values here ? 
+__kernel void standDev(__global const int* A, __global int* B, int mean,__local int* scratch) {
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+
+	//cache all N values from global memory to local memory
+	scratch[lid] = A[id];
+
+	scratch[lid] -= mean;
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i *= 2) {
+		if (!(lid % (i * 2)) && ((lid + i) < N))
+			scratch[lid] += scratch[lid + i];
+		//printf("%d\n",scratch[lid]);
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	//printf("break\n");
+
+	//we add results from all local groups to the first element of the array
+	//serial operation! but works for any group size
+	//copy the cache to output array
+	if (!lid) {
+		atomic_add(&B[0], scratch[lid]);   // Everything added to the first element in the global memory 
+	}
+}
 
 
- __kernel void average(__global const float* A, __global float* B,__local float* scratch){ 
+
+
+
+
+
+
+
+
+
+
+
+
+ __kernel void average(__global const int* A, __global int* B,__local int* scratch){ 
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+	int G = get_global_size(0);
+	
+	scratch[lid] = A[id]; // All value witin the vector go from global to local memory into the scratch
+
+	// Is all this one work group??
+	//printf("Conversion\n");
+	//printf("Global size %d\n", G);
+	//printf("Vector size %d\n", vecSize);
+	barrier(CLK_LOCAL_MEM_FENCE); // wait for each local thread to copy over. so yeah elements are run in parallel
+
+	int temp;
+	
+	for (int i = 1; i < N; i *= 2) {
+		if (!(lid % (i * 2)) && ((lid + i) < N)) { 
+				scratch[lid] += scratch[lid + i];
+			}
+	barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	if (!lid) {
+		//printf("First Before %d\n", scratch[lid]);
+		//scratch[lid] = scratch[lid]/G;
+		//printf("First After %d\n", scratch[lid]);
+		//printf("Global Size %d\n"); // So it output the global size, but when I try to divide, it outpus zero.
+		atomic_add(&B[0],scratch[lid]);   // Everything added to the first element in the global memory 
+	}
+}
+ 
+ 
+ 
+ __kernel void average1(__global const float* A, __global float* B,__local float* scratch){ 
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
@@ -129,12 +204,13 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
 		//scratch[lid] = scratch[lid]/G;
 		//printf("First After %d\n", scratch[lid]);
 		//printf("Global Size %d\n"); // So it output the global size, but when I try to divide, it outpus zero.
-		atomic_add(&B[0],scratch[lid]);   // Everything added to the first element in the global memory 
 	}
 }
- 
- 
+
+
 // Try to do without atomic function, by pasting the sum of each work group into a global vector and applying reduce again to the vector.
+// To get float number working I have to get the above to work
+
 
 // When 10 elements there is only one workgorup.
 
@@ -176,6 +252,7 @@ __kernel void minVec(__global const int* A, __global int* B, __local int* scratc
 	// need lid, to paste the first element from each wotk group into a single global vector B , when
 	// there are ten elements it only runs once, but when there are multiple workgroups, this fires when
 	// on the first element of each group. 
+
 
 
 __kernel void maxVec(__global const int* A, __global int* B, __local int* scratch){ 
@@ -221,6 +298,8 @@ __kernel void hist_simple(__global const int* A, __global int* H) {
 
 	atomic_inc(&H[bin_index]);//serial operation, not very efficient!
 }
+
+
 
 //a double-buffered version of the Hillis-Steele inclusive scan
 //requires two additional input arguments which correspond to two local buffers
