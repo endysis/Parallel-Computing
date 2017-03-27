@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
 
 															 //5.2 Setup and execute all kernels (i.e. device code)
 		// ___MINIMUM KERNEL___
-		cl::Kernel kernel_1 = cl::Kernel(program, "minVec");
+		cl::Kernel kernel_1 = cl::Kernel(program, "maxVec");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size

@@ -285,18 +285,21 @@ __kernel void block_sum(__global const int* A, __global int* B, int local_size) 
 
 
 
- 
+
 __kernel void block_sumReduce(__global const int* A, __global int* B, int inputLocal_size ,int outputLocal_size) {
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 
+	int gid = get_group_id(0);
+	// He said paste something like add this to the local id to get the output
+	
 	int G = get_global_size(0);
 	int N = get_local_size(0);
 
 	int stepNum = inputLocal_size/outputLocal_size;
 
 //	printf("%d , %d\n",G,N);
-
+// 
 
 	//printf("%d\n",stepNum);
 
@@ -305,35 +308,36 @@ __kernel void block_sumReduce(__global const int* A, __global int* B, int inputL
 		printf("StepDownNum = %d",stepDownNum);
 	}*/ 
 	 
-	/*
-	for(int i = 1; i < 15; i+=(stepNum-1)){ 
-		printf("%d\n",stepNum);
-		printf("Id in A : %d\n",A[id+i]);
-		printf("%d\n",i);
-	}*/
+	
 
-	printf("%d the local size is\n", A[(lid+1)*8-1]);
+	//printf("%d the local size is\n", A[(lid+1)*8-1]);
 
-	//printf("%d sent size is %d\n",inputLocal_size);
+	printf("%d sent size is %d\n",inputLocal_size);
 
 	printf("local id %d\n",lid);
 
-	
+	printf("global id %d\n",id);
 
-	for(int i = 1; i < N; i++){ 
-	B[lid] = A[(id + 1) * (8-1)];
-	__syncthreads();
-	}
+	printf("group id %d\n",gid);
 
+
+	//for(int i = 1; i < N; i++){ 
+	B[lid + gid] = A[(id + 1) * (8-1)];
+	//}
+
+	/*for(int i = 7; i <= 15; i+=8){ 
+		//printf("%d\n",stepNum);
+		printf("Id in A : %d\n",A[i]);
+		printf("%d\n",i);
+		B[0] = A[i]; 
+	}*/
 	// Cant seem to get another element in the second position of the output array
-
+	// Probs because of a race condition
 } 
-
-
  
+
 // So It breaks the A array into two groups/sections (or the number of workgroups designed for the kernel) and
 // get the last element of each section  - I wasnt under standing parrael
-
 
 
 

@@ -1,5 +1,6 @@
 ﻿  Tutorial 1.cpp
-  Tutorial 1.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 1.exe
-  Tutorial 1.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 1.pdb (Full PDB)
+  LINK : C:\Users\Computing\Desktop\Parallel-Computing-master\Parallel-Computing-master\Assignment\x64\Debug\Tutorial 1.exe not found or not built by the last incremental link; performing full link
+  Tutorial 1.vcxproj -> C:\Users\Computing\Desktop\Parallel-Computing-master\Parallel-Computing-master\Assignment\x64\Debug\Tutorial 1.exe
+  Tutorial 1.vcxproj -> C:\Users\Computing\Desktop\Parallel-Computing-master\Parallel-Computing-master\Assignment\x64\Debug\Tutorial 1.pdb (Full PDB)
   my_kernels.cl
           1 file(s) copied.
