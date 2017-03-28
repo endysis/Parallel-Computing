@@ -73,13 +73,12 @@ int main(int argc, char **argv) {
 		typedef float mytype;
 		vector<mytype> weatherTemper; // Testing array
 
-
 		typedef float mytype;
 		//Part 4 - memory allocation
 		//host - input
-		//std::vector<mytype> A = { 3.5,7,8,3,7,9,3,2}; //allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		std::vector<mytype> A = { 3.5,7,8,3,7,9,3,2,1.2f,4,6,5,94,3,7,6}; //allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
 
-		std::vector<mytype> A;
+		//std::vector<mytype> A;
 
 
 		// Should we read the file in parallel ?
@@ -91,7 +90,7 @@ int main(int argc, char **argv) {
 		int weatherTime;
 		float weatherTemp;
 
-		//int c = 0;
+		int count = 0;
 
 		while (inputFile >> weatherStation1 >> weatherYear >> weatherMonth >> weatherDay >> weatherTime >> weatherTemp) {
 			//cout << "Variable " << weatherStation1 << endl;
@@ -102,20 +101,22 @@ int main(int argc, char **argv) {
 			wI.setTime(weatherTime);
 			wI.setTemp(weatherTemp);
 			weatherList.push_back(wI);
-			A.push_back(weatherTemp); // Test Vector
+			//A.push_back(weatherTemp); // Test Vector
 
 									  //string s = weatherList[c].getWeatherStation();
 									  //cout << "Vector Element " << s << endl;
-									  //c++
+			count++;
 		}
-		 
-		 
+		  
+		 printf("Count %d\n ", count);
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
 
-		size_t local_size = 20; // So i have to loop through the input vector to determine the locl size?
-		 
+		size_t local_size = 8; // So i have to loop through the input vector to determine the locl size?
+		 // 892 for short
+		 // 694 for long 
+		 /*
 		size_t padding_size = A.size() % local_size;
 		//if the input vector is not a multiple of the local_size
 		//insert additional neutral elements (0 for addition) so that the total will not be affected
@@ -125,11 +126,13 @@ int main(int argc, char **argv) {
 			std::vector<float> A_ext(local_size - padding_size, 0);
 			//append that extra vector to our input
 			A.insert(A.end(), A_ext.begin(), A_ext.end());
-		}
+		} */
+		 
+		//cout << "Padding Size " << padding_size << endl;
 
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size() * sizeof(mytype);//size in bytes
-		size_t nr_groups = input_elements / local_size;
+		size_t nr_groups = input_elements / local_size; 
 
 
 		//host - output
@@ -146,9 +149,6 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, output_sizeC);
 		cl::Buffer buffer_D(context, CL_MEM_READ_WRITE, output_sizeC); //  Final output vectio
 		
-
-		
-
 		//Part 5 - device operations
 
 		//5.1 copy array A to and initialise other arrays on device memory
@@ -156,53 +156,72 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 		queue.enqueueFillBuffer(buffer_D, 0, 0, output_sizeC);//zero B buffer on device memory 
 
+		/*
+		 
+		 
 		// ___AVERAGE KERNEL___
 		cl::Kernel kernel_AV = cl::Kernel(program, "reduce_add_4W");
+		
+		int workGroupCount = nr_groups;
+
+		while(workGroupCount >= 1){
 		kernel_AV.setArg(0, buffer_A);
 		kernel_AV.setArg(1, buffer_B);
 		kernel_AV.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size 
 		queue.enqueueNDRangeKernel(kernel_AV, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+		buffer_A = buffer_B;
+		workGroupCount--;
 		//std::cout << "A = " << A << std::endl;
-		//std::cout << "Average Number B = " << B << std::endl;
+		
 		//std::cout << "Average Number B = " << B[0] << std::endl;
-		int mean = B[0]/input_elements;
+		}
+		printf ("Average Number B =  %f", B[0]/count);
+		*/
+		 
+
+		   
 		
+		// ___MIN KERNEL___
+		cl::Kernel kernel_MIN = cl::Kernel(program, "minVec");
+		int workGroupCount = nr_groups;
+		printf("Work gorup count = %d\n",workGroupCount);
 
-		int c = 0;
-		for (int i = 0; i < A.size(); i += local_size) {
-			C[c] = B[i];
-			c++;
-		} // Am I okay  
-		
-		//cout << "C : " << C << endl;
-		queue.enqueueWriteBuffer(buffer_C, CL_TRUE, 0, output_sizeC, &C[0]);
+		while (workGroupCount >= 1) {
 
-		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_add_4W");
-		kernel_2.setArg(0, buffer_C);
-		kernel_2.setArg(1, buffer_D);
-		kernel_2.setArg(2, cl::Local(C.size() * sizeof(mytype)));
+			kernel_MIN.setArg(0, buffer_A);
+			kernel_MIN.setArg(1, buffer_B);
+			kernel_MIN.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size 
+			queue.enqueueNDRangeKernel(kernel_MIN, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+			queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+			cout << "Current Buffer B " << B << endl;
+			//buffer_A = buffer_B;
+			workGroupCount--;
 
-		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(nr_groups), cl::NullRange, NULL, &prof_event);
+			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, workGroupCount, &B[0]);
+			queue.enqueueFillBuffer(buffer_B, 0, 0, workGroupCount);//zero B buffer on device memory
 
+		}
 
-
-		queue.enqueueReadBuffer(buffer_D, CL_TRUE, 0, output_sizeC, &C[0]);
-		cout << "New C Total : " << C[0] << endl;
-
-
-
-
-		//5.3 Copy the result from device to host
-		
-
-
-		//std::cout << "A = " << weatherTemper << std::endl;
-		
+		cout << A << endl; 
+		cout << B << endl;
+		printf("Min Number B =  %f\n", B[0]);
+	
+	
+	
+	
+	
 	}
+
+
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
 	}
 
 	return 0;
 }
+
+
+ 
+
+
