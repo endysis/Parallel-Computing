@@ -1,22 +1,7 @@
-﻿  WeatherData.cpp
-  Tutorial 3.cpp
+﻿  Tutorial 3.cpp
 Tutorial 3.cpp(105): warning C4244: 'argument': conversion from 'float' to 'const int', possible loss of data
-Tutorial 3.cpp(191): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-  WeatherItem.cpp
-  lodepng.cpp
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(762): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(1422): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(1426): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(1498): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(3441): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(3455): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(4262): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(4310): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(4390): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-..\Tutorial 2\Graphics\lodepng\lodepng.cpp(5329): warning C4267: 'initializing': conversion from 'size_t' to 'unsigned int', possible loss of data
-  Generating Code...
-  LINK : C:\Users\Computing\Desktop\Parallel-Computing-master\Parallel-Computing-master\Assignment\x64\Debug\Tutorial 3.exe not found or not built by the last incremental link; performing full link
-  Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Parallel-Computing-master\Parallel-Computing-master\Assignment\x64\Debug\Tutorial 3.exe
-  Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Parallel-Computing-master\Parallel-Computing-master\Assignment\x64\Debug\Tutorial 3.pdb (Full PDB)
+Tutorial 3.cpp(192): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 3.exe
+  Tutorial 3.vcxproj -> C:\Users\Computing\Desktop\Assignment\x64\Debug\Tutorial 3.pdb (Full PDB)
   my_kernels3.cl
           1 file(s) copied.

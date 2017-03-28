@@ -156,6 +156,7 @@ int main(int argc, char **argv) {
 
 
 
+				
 															 //5.2 Setup and execute all kernels (i.e. device code)
 		// ___MINIMUM KERNEL___
 		cl::Kernel kernel_1 = cl::Kernel(program, "maxVec");
@@ -177,7 +178,7 @@ int main(int argc, char **argv) {
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 		std::cout << "Max Number B = " << B << std::endl;
-
+		
 		   
  
 		// ___AVERAGE KERNEL___
@@ -200,9 +201,9 @@ int main(int argc, char **argv) {
 		kernel_STAND.setArg(3, cl::Local(local_size * sizeof(mytype)));//local memory size 
 		queue.enqueueNDRangeKernel(kernel_STAND, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-		std::cout << "Stand Number B = " << sqrt(B[0]/(input_elements-1)) << std::endl;
+		std::cout << "Stand Number B = " << sqrt(B[0]/(input_elements)) << std::endl;
 
-
+		
 
 
 		//5.3 Copy the result from device to host
