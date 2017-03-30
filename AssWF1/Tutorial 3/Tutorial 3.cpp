@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 		//build and debug the kernel code
 		try {
 			program.build();
-		}
+		} 
 		catch (const cl::Error& err) {
 			std::cout << "Build Status: " << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
 			std::cout << "Build Options:\t" << program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 		//std::vector<mytype> A = {-3.5,-7,8,3,7,9,3,2,1.2f,-400,9.3f,5,94,-6.5}; 
 		//std::vector<mytype> A {1,2,3,4,5,6,7,8};
 		std::vector<mytype> A;
-		ifstream inputFile("temp_lincolnshire_short.txt");
+		ifstream inputFile("temp_lincolnshire.txt");
 		string weatherStation1;
 		int weatherYear;
 		int weatherMonth;
@@ -96,11 +96,10 @@ int main(int argc, char **argv) {
 			wI.setTemp(weatherTemp);
 			//weatherList.push_back(wI);
 			A.push_back(weatherTemp);
-
 			count++; 
 		} 
 		 //count = 10;
-		printf("Count %d\n", count);
+		//printf("Count %d\n", count);
 
 		size_t local_size = 64; 
 		 // 892 for short
@@ -116,8 +115,6 @@ int main(int argc, char **argv) {
 			//append that extra vector to our input
 			A.insert(A.end(), A_ext.begin(), A_ext.end());
 		} 
-		 cout << A.size() << " Pad size" << endl;
-		//cout << "Padding Size " << padding_size << endl;
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size() * sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size; 
@@ -139,9 +136,8 @@ int main(int argc, char **argv) {
 		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_B,0, 0, output_size);//zero B buffer on device memory
+		queue.enqueueFillBuffer(buffer_C, 0, 0, output_size);//zero B buffer on device memory
 		int workGroupCount = nr_groups;
-
-
 
 		/*
 		vector<float> bannanaTemp;
@@ -181,15 +177,12 @@ int main(int argc, char **argv) {
 
 		cout << "Median: " << median;
 		*/
-		 
-
-
+		
+		// ADDITION KERNEL
 		  int vector_elements = input_elements;
 		  int output_size1 = output_size;
 		  int vectorSize = 0;
 
-	
-		
 		cl::Kernel kernel_ADD = cl::Kernel(program, "addVec");
 		while (workGroupCount >= 1) {
 			kernel_ADD.setArg(0, buffer_A);
@@ -200,23 +193,16 @@ int main(int argc, char **argv) {
 		vector<float>::const_iterator first = B.begin() + 0;
 		vector<float>::const_iterator last = B.begin() + workGroupCount;
 		vector<float> newInput (first,last);
-		cout << workGroupCount << endl;
-		//cout << B << endl;
 		if(workGroupCount == 1){
 			B = newInput;
 			break;
 		} 
 		size_t padding_size = newInput.size() % local_size;
-		//if the input vector is not a multiple of the local_size
-		//insert additional neutral elements (0 for addition) so that the total will not be affected
 		if (padding_size) {
-			//create an extra vector with neutral values
 			std::vector<float> newInput_ext(local_size - padding_size, 0);
-			//append that extra vector to our input
 			newInput.insert(newInput.end(), newInput_ext.begin(),newInput_ext.end());
 			}
 		vector<float> newOutput(newInput.size(),0);
-
 		vectorSize = newInput.size() * sizeof(float);
 		queue.enqueueWriteBuffer(buffer_A,CL_TRUE,0,vectorSize,&newInput[0]);
 		queue.enqueueWriteBuffer(buffer_B,CL_TRUE,0,vectorSize,&newOutput[0]);
@@ -224,17 +210,181 @@ int main(int argc, char **argv) {
 		vector_elements = newInput.size();
 		output_size1 = workGroupCount * sizeof(float);
 		} 
-
-		cout << B << endl;
 		float mean = B[0]/count;
-		printf("The mean is %f",mean);
+		printf("Mean Value : %f\n",mean);
+
 		
-		
+
+		//RESET//		
+		vector_elements = input_elements;
+		output_size1 = output_size;
+		vectorSize = 0;
+		workGroupCount = nr_groups;
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, input_size, &C[0]);
+		B = C; 
+		///////
 
 
 
+		//STANDARD DEVIAITION
+		cl::Kernel kernel_SD = cl::Kernel(program, "standDev");
+		kernel_SD.setArg(0, buffer_A);
+		kernel_SD.setArg(1, buffer_B);
+		kernel_SD.setArg(2, mean);
+		kernel_SD.setArg(3, cl::Local(local_size * sizeof(mytype)));//local memory size 
+		queue.enqueueNDRangeKernel(kernel_SD, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &B[0]);
+		cl::Kernel kernel_SD1 = cl::Kernel(program, "addVec");
+		while (workGroupCount >= 1) {
+		kernel_SD1.setArg(0, buffer_A);
+		kernel_SD1.setArg(1, buffer_B);
+		kernel_SD1.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+		queue.enqueueNDRangeKernel(kernel_SD1, cl::NullRange, cl::NDRange(vector_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size1, &B[0]);
+		vector<float>::const_iterator first = B.begin() + 0;
+		vector<float>::const_iterator last = B.begin() + workGroupCount;
+		vector<float> newInput(first, last);
+		if (workGroupCount == 1) {
+		B = newInput;
+		break;
+		}
+		size_t padding_size = newInput.size() % local_size;
+		if (padding_size) {
+		std::vector<float> newInput_ext(local_size - padding_size, 0);
+		newInput.insert(newInput.end(), newInput_ext.begin(), newInput_ext.end());
+		}
+		vector<float> newOutput(newInput.size(), 0);
+		vectorSize = newInput.size() * sizeof(float);
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, vectorSize, &newInput[0]);
+		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vectorSize, &newOutput[0]);
+		workGroupCount = newInput.size() / local_size;
+		vector_elements = newInput.size();
+		output_size1 = workGroupCount * sizeof(float);
+		}
+
+		float RES = B[0] / count;
+		float SD = sqrt(RES);
+		printf("Standard Deviation : %f\n", SD);
+
+
+		///RESET///
+		vector_elements = input_elements;
+		output_size1 = output_size;
+		vectorSize = 0;
+		workGroupCount = nr_groups;
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, input_size, &C[0]);
+		B = C; 
+		//////////
+
+
+		cl::Kernel kernel_MIN = cl::Kernel(program, "minVec");
+		while (workGroupCount >= 1) {
+			kernel_MIN.setArg(0, buffer_A);
+			kernel_MIN.setArg(1, buffer_B);
+			kernel_MIN.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size 
+			queue.enqueueNDRangeKernel(kernel_MIN, cl::NullRange, cl::NDRange(vector_elements), cl::NDRange(local_size), NULL, &prof_event);
+			queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size1, &B[0]);
+			vector<float>::const_iterator first = B.begin() + 0;
+			vector<float>::const_iterator last = B.begin() + workGroupCount;
+			vector<float> newInput(first, last);
+			if (workGroupCount == 1) {
+				B = newInput;
+				break;
+			}
+			size_t padding_size = newInput.size() % local_size;
+			if (padding_size) {
+				std::vector<float> newInput_ext(local_size - padding_size, 0);
+				newInput.insert(newInput.end(), newInput_ext.begin(), newInput_ext.end());
+			}
+			vector<float> newOutput(newInput.size(), 0);
+			vectorSize = newInput.size() * sizeof(float);
+			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, vectorSize, &newInput[0]);
+			queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vectorSize, &newOutput[0]);
+			workGroupCount = newInput.size() / local_size;
+			vector_elements = newInput.size();
+			output_size1 = workGroupCount * sizeof(float);
+		}
+		printf("Min Value : %f\n", B[0]);
+
+
+		 
+		//RESET//		
+		vector_elements = input_elements;
+		output_size1 = output_size;
+		vectorSize = 0;
+		workGroupCount = nr_groups;
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, input_size, &C[0]);
+		B = C;
+		///////
+
+		cl::Kernel kernel_MAX = cl::Kernel(program, "maxVec");
+		while (workGroupCount >= 1) {
+			kernel_MAX.setArg(0, buffer_A);
+			kernel_MAX.setArg(1, buffer_B);
+			kernel_MAX.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size 
+			queue.enqueueNDRangeKernel(kernel_MAX, cl::NullRange, cl::NDRange(vector_elements), cl::NDRange(local_size), NULL, &prof_event);
+			queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size1, &B[0]);
+			vector<float>::const_iterator first = B.begin() + 0;
+			vector<float>::const_iterator last = B.begin() + workGroupCount;
+			vector<float> newInput(first, last);
+			if (workGroupCount == 1) {
+				B = newInput;
+				break;
+			}
+			size_t padding_size = newInput.size() % local_size;
+			if (padding_size) {
+				std::vector<float> newInput_ext(local_size - padding_size, 0);
+				newInput.insert(newInput.end(), newInput_ext.begin(), newInput_ext.end());
+			}
+			vector<float> newOutput(newInput.size(), 0);
+			vectorSize = newInput.size() * sizeof(float);
+			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, vectorSize, &newInput[0]);
+			queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vectorSize, &newOutput[0]);
+			workGroupCount = newInput.size() / local_size;
+			vector_elements = newInput.size();
+			output_size1 = workGroupCount * sizeof(float);
+		}
+		printf("Max Value : %f\n", B[0]);
+
+
+
+
+
+
+
 		
-		/*
+
+		 
+			
+
+
+			
+			/*
+			float res1 = 0;
+			for (int i = 0; i < A.size(); i++) {
+				res1 += B[i];
+			}
+		C = B;  
+		 
+			//printf("Addition  : %f\n",B[0]);
+			float RES = res1 / count;
+			float SD = sqrt(RES);
+			printf("Standard Deviation : %f\n", SD);	 
+
+			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+			
+
+
+			*/
+		 
+
+//		cout << B << endl;
+
+	/*
 		int addCount = 0;
 		  
 		cl::Kernel kernel_ADD2 = cl::Kernel(program, "addVec");
@@ -318,102 +468,96 @@ int main(int argc, char **argv) {
 		 
 		 */
 		 
-
-		vector_elements = input_elements;
-		output_size1 = output_size;
-		vectorSize = 0;
-		workGroupCount = nr_groups;
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-
-		// ___STANDARD DEVIATION KERNEL___
-		cl::Kernel kernel_SD = cl::Kernel(program, "standDev");
-			kernel_SD.setArg(0, buffer_A);
-			kernel_SD.setArg(1, buffer_B);
-			kernel_SD.setArg(2, mean);
-			kernel_SD.setArg(3, cl::Local(local_size * sizeof(mytype)));//local memory size 
-			queue.enqueueNDRangeKernel(kernel_SD, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-			queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-			
-			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &B[0]);
-		/*	
-			cl::Kernel kernel_SD1 = cl::Kernel(program, "addVec");
-			while (workGroupCount >= 1) {
-				kernel_SD1.setArg(0, buffer_A);
-				kernel_SD1.setArg(1, buffer_B);
-				kernel_SD1.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size 
-				queue.enqueueNDRangeKernel(kernel_SD1, cl::NullRange, cl::NDRange(vector_elements), cl::NDRange(local_size), NULL, &prof_event);
-				queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size1, &B[0]);
-				vector<float>::const_iterator first = B.begin() + 0;
-				vector<float>::const_iterator last = B.begin() + workGroupCount;
-				vector<float> newInput(first, last);
-				cout << workGroupCount << endl;
-				//cout << B << endl;
-				if (workGroupCount == 1) {
-					B = newInput;
-					break;
-				}
-				size_t padding_size = newInput.size() % local_size;
-				//if the input vector is not a multiple of the local_size
-				//insert additional neutral elements (0 for addition) so that the total will not be affected
-				if (padding_size) {
-					//create an extra vector with neutral values
-					std::vector<float> newInput_ext(local_size - padding_size, 0);
-					//append that extra vector to our input
-					newInput.insert(newInput.end(), newInput_ext.begin(), newInput_ext.end());
-				}
-				vector<float> newOutput(newInput.size(), 0);
-
-				vectorSize = newInput.size() * sizeof(float);
-				queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, vectorSize, &newInput[0]);
-				queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vectorSize, &newOutput[0]);
-				workGroupCount = newInput.size() / local_size;
-				vector_elements = newInput.size();
-				output_size1 = workGroupCount * sizeof(float);
-			}
-			
-			
-			cout << B[0] << endl;
-
-
-			float RES = B[0] / count;
-			float SD = sqrt(RES);
-			printf("Standard Deviation : %f\n", SD);
-
-
-
-			*/
-
-
-			
-			/*
-			float res1 = 0;
-			for (int i = 0; i < A.size(); i++) {
-				res1 += B[i];
-			}
-		C = B;  
-		 
-			//printf("Addition  : %f\n",B[0]);
-			float RES = res1 / count;
-			float SD = sqrt(RES);
-			printf("Standard Deviation : %f\n", SD);	 
-
-			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-			
-
-
-			*/
-		 
-
-//		cout << B << endl;
-
-	
 	
 	
 	
 	
 	} 
 
-	 
+	/*
+	int addCount = 0;
+
+	cl::Kernel kernel_ADD2 = cl::Kernel(program, "addVec");
+	while (workGroupCount >= 1) {
+	kernel_ADD2.setArg(0, buffer_A);
+	kernel_ADD2.setArg(1, buffer_B);
+	kernel_ADD2.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+	queue.enqueueNDRangeKernel(kernel_ADD2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+	queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+
+
+	vector<float> L ()
+
+	buffer_A = buffer_B;
+	//cout << B << endl;
+	workGroupCount--;
+	}
+	printf("Total Number : %f\n", B[0]);
+
+
+
+
+	*/
+
+	/*
+	// ___AVERAGE KERNEL___
+	cl::Event prof_eventAVG;
+	cl::Kernel kernel_AV = cl::Kernel(program, "addVec");
+	while(workGroupCount >= 1){
+	kernel_AV.setArg(0, buffer_A); // Place buffer_A to kernel
+	kernel_AV.setArg(1, buffer_B);  // Place buffer_B to kernel
+	kernel_AV.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+	queue.enqueueNDRangeKernel(kernel_AV, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_eventAVG); // Start Kernel
+	queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+	buffer_A = buffer_B; // Swap round buffers to place the result recursivly as the new input
+	workGroupCount--; //
+	//cout<< workGroupCount<<endl;
+	}
+	float mean = B[0]/count; // Divide the sum by the size of A to get the mean.
+	printf ("Average Number : %f\n", mean);
+	std::cout << "Kernel execution time [ns]:"<<prof_eventAVG.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
+	prof_eventAVG.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+
+
+	queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]); // Reset Buffer A
+	workGroupCount = nr_groups;
+
+
+	// ___MIN KERNEL___
+	cl::Kernel kernel_MIN = cl::Kernel(program, "minVec");
+	while (workGroupCount >= 1) {
+	kernel_MIN.setArg(0, buffer_A);
+	kernel_MIN.setArg(1, buffer_B);
+	kernel_MIN.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+	queue.enqueueNDRangeKernel(kernel_MIN, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+	queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+	buffer_A = buffer_B;
+	workGroupCount--;
+	}
+	printf("Min Number : %f\n", B[0]);
+
+	queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+	workGroupCount = nr_groups;
+
+
+
+	// ___MAX KERNEL___
+	cl::Kernel kernel_MAX = cl::Kernel(program, "maxVec");
+	workGroupCount = nr_groups;
+	while (workGroupCount >= 1) {
+	kernel_MAX.setArg(0, buffer_A);
+	kernel_MAX.setArg(1, buffer_B);
+	kernel_MAX.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+	queue.enqueueNDRangeKernel(kernel_MAX, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+
+	queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+	buffer_A = buffer_B;
+	workGroupCount--;
+	}
+	printf("Max Number : %f\n", B[0]);
+
+	*/
+
 	 
 
 	  
